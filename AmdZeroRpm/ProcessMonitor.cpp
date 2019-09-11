@@ -1,4 +1,5 @@
 #include "ProcessMonitor.hpp"
+#include <algorithm>
 #include <array>
 #include <psapi.h>
 
@@ -43,96 +44,77 @@ void ProcessMonitor::AddMonitoredPath(std::wstring &&path) noexcept {
 bool ProcessMonitor::AddProcess(const DWORD pid) noexcept {
   const auto path = GetProcessExePath(pid);
 
-  if (!IsMonitoredPath(path)) {
-    return false;
-  }
-
-  {
-    MutexGuard guard{mProcessesLock};
-    mProcessPids.push_back(pid);
-  }
-
-  if (!SetEvent(mNewProcessEvent)) {
-    MutexGuard guard{mProcessesLock};
-    if (mProcessPids.back() == pid) {
-      mProcessPids.pop_back();
+  if (IsMonitoredPath(path)) {
+    const auto process = OpenProcess(SYNCHRONIZE, false, pid);
+    if (process) {
+      MutexGuard guard{mProcessesLock};
+      mNewProcessQueue.push_back(process);
+      SetEvent(mNewProcessEvent);
+      return true;
     }
   }
 
-  return true;
+  return false;
 }
 
 bool ProcessMonitor::ScanRunning() noexcept {
   DWORD pids[3072];
   DWORD bytesReturned = 0;
 
-  if (!EnumProcesses(pids, sizeof(pids), &bytesReturned)) {
-    return false;
+  if (EnumProcesses(pids, sizeof(pids), &bytesReturned)) {
+    MutexGuard guard{mProcessesLock};
+    mNewProcessQueue.clear();
+    for (DWORD i = 0; i < bytesReturned / sizeof(DWORD); ++i) {
+      const auto pid = pids[i];
+      const auto path = GetProcessExePath(pid);
+      if (IsMonitoredPath(path)) {
+        const auto process = OpenProcess(SYNCHRONIZE, false, pid);
+        if (process) {
+          mNewProcessQueue.push_back(process);
+        }
+      }
+    }
+    if (!mNewProcessQueue.empty()) {
+      SetEvent(mNewProcessEvent);
+    }
+    return true;
   }
 
-  for (DWORD i = 0; i < bytesReturned / sizeof(DWORD); ++i) {
-    AddProcess(pids[i]);
-  }
-
-  return true;
+  return false;
 }
 
-MonitorState ProcessMonitor::CurrentState() const noexcept {
-  MutexGuard guard{mProcessesLock};
-  return mProcessPids.size() > 1 ? MonitorState::Active
-                                 : MonitorState::NoProcesses;
-}
-
-void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &onStateChanged) {
-  constexpr auto kEventIndex = 0;
+void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &eventHandler) {
   constexpr auto kMaxHandles = MAXIMUM_WAIT_OBJECTS;
 
-  std::vector<HANDLE> handles{mNewProcessEvent};
+  std::vector<HANDLE> handles;
   handles.reserve(kMaxHandles);
-  bool newProcessesInQueue = true;
+
+  const auto checkWait = [](const DWORD code) {
+    if (code != WAIT_OBJECT_0) {
+      throw std::runtime_error("wait function failed");
+    }
+  };
+
+  ScanRunning();
 
   while (true) {
-    // Checking for incoming queue being not empty not safe without
-    // locking the mutex, so we're using a separate flag here.
-    if (newProcessesInQueue) {
-      bool addedNewProcesses = false;
-      {
-        MutexGuard guard{mProcessesLock};
-        while (!mProcessPids.empty() && handles.size() < kMaxHandles) {
-          const DWORD pid = mProcessPids.back();
-          mProcessPids.pop_back();
-
-          HANDLE process = OpenProcess(SYNCHRONIZE, false, pid);
-          if (process) {
-            handles.push_back(process);
-            addedNewProcesses = true;
-          }
-        }
-        mProcessPids.clear();
-      }
-      if (addedNewProcesses) {
-        onStateChanged.ProcessStateChanged(MonitorState::Active);
-      }
-      newProcessesInQueue = false;
+    if (handles.empty()) {
+      eventHandler.ProcessStateChanged(MonitorState::NoProcesses);
+      checkWait(WaitForSingleObject(mNewProcessEvent, INFINITE));
+    } else {
+      eventHandler.ProcessStateChanged(MonitorState::Active);
+      const auto count = static_cast<DWORD>(handles.size());
+      checkWait(WaitForMultipleObjects(count, &handles[0], true, INFINITE));
+      std::for_each(handles.cbegin(), handles.cend(), CloseHandle);
+      handles.clear();
     }
-
-    const auto count = static_cast<DWORD>(handles.size());
-    DWORD index = WaitForMultipleObjects(count, &handles[0], false, INFINITE);
-    if (index >= WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS) {
-      throw std::runtime_error("unexpected WaitForMultipleObjects() result");
-    }
-    index -= WAIT_OBJECT_0;
-
-    if (index == kEventIndex) {
-      newProcessesInQueue = true;
-      continue;
-    }
-
-    CloseHandle(handles[index]);
-    handles.erase(handles.cbegin() + index);
-
-    if (handles.size() == 1) {
-      onStateChanged.ProcessStateChanged(MonitorState::NoProcesses);
+    {
+      MutexGuard guard{mProcessesLock};
+      const auto count = std::min<size_t>(kMaxHandles, mNewProcessQueue.size());
+      std::copy_n(mNewProcessQueue.cbegin(), count,
+                  std::back_inserter(handles));
+      mNewProcessQueue.erase(mNewProcessQueue.cbegin(),
+                             mNewProcessQueue.cbegin() + count);
     }
   }
 }
@@ -142,9 +124,8 @@ bool ProcessMonitor::IsMonitoredPath(const std::wstring &path) {
     return false;
   }
   for (const auto &monitoredPath : mMonitoredPaths) {
-    const int comp =
-        _wcsnicmp(monitoredPath.c_str(), path.c_str(), path.length());
-    if (comp == 0) {
+    const auto count = std::min<size_t>(monitoredPath.length(), path.length());
+    if (_wcsnicmp(monitoredPath.c_str(), path.c_str(), count) == 0) {
       return true;
     }
   }

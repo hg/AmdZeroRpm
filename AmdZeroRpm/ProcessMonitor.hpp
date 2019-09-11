@@ -14,16 +14,15 @@ public:
   void AddMonitoredPath(const std::wstring &path) noexcept;
   void AddMonitoredPath(std::wstring &&path) noexcept;
   bool AddProcess(DWORD pid) noexcept;
-  bool ScanRunning() noexcept;
-  MonitorState CurrentState() const noexcept;
 
-  [[noreturn]] void MonitorLoop(IStateChangeCallbackReceiver &onStateChanged);
+  [[noreturn]] void MonitorLoop(IStateChangeCallbackReceiver &eventHandler);
 
 private:
   mutable std::mutex mProcessesLock;
-  std::vector<DWORD> mProcessPids;
+  std::vector<HANDLE> mNewProcessQueue;
   std::vector<std::wstring> mMonitoredPaths;
   HANDLE mNewProcessEvent;
 
+  bool ScanRunning() noexcept;
   bool IsMonitoredPath(const std::wstring &path);
 };

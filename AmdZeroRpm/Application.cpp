@@ -38,14 +38,7 @@ Application::Application() {
 
 void Application::Start() {
   connection->Start();
-
-  if (!monitor.ScanRunning()) {
-    throw std::runtime_error("could not scan running processes");
-  }
-
-  ProcessStateChanged(monitor.CurrentState());
   monitor.MonitorLoop(*this);
-
   connection->Stop();
 }
 
