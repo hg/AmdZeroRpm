@@ -9,6 +9,8 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prevInstance,
   UNREFERENCED_PARAMETER(cmdLine);
   UNREFERENCED_PARAMETER(showCmd);
 
+  RegisterAutostart();
+
   try {
     Application app;
     app.Start();

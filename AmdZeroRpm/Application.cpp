@@ -57,3 +57,22 @@ void Application::ProcessStateChanged(MonitorState state) noexcept {
   bool enabled = state == MonitorState::NoProcesses;
   gpuController.ToggleZeroRpm(enabled);
 }
+
+bool RegisterAutostart() noexcept {
+  wchar_t pathBuf[MAX_PATH + 1];
+  if (!GetModuleFileNameW(0, pathBuf, MAX_PATH)) {
+    return false;
+  }
+  HKEY key;
+  constexpr auto path = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
+  auto status = RegOpenKeyExW(HKEY_CURRENT_USER, path, 0, KEY_WRITE, &key);
+  if (status != ERROR_SUCCESS) {
+    return false;
+  }
+  const auto byteLength = (wcslen(pathBuf) + 1) * sizeof(wchar_t);
+  status = RegSetValueExW(key, kApplicationName, 0, REG_SZ,
+                          reinterpret_cast<BYTE *>(pathBuf),
+                          static_cast<DWORD>(byteLength));
+  RegCloseKey(key);
+  return status == ERROR_SUCCESS;
+}

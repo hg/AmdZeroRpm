@@ -6,6 +6,10 @@
 #include "WmiEventListener.hpp"
 #include <memory>
 
+constexpr auto kApplicationName = L"AmdZeroRpm";
+
+bool RegisterAutostart() noexcept;
+
 class Application final : public IStartupCallbackReceiver,
                           public IStateChangeCallbackReceiver {
 public:
