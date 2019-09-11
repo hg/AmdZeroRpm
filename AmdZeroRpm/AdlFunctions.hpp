@@ -1,6 +1,5 @@
 #pragma once
 
-#include "adl_defines.h"
 #include "adl_sdk.h"
 
 #define ADL_IMPORT __declspec(dllimport)

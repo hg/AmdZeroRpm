@@ -4,8 +4,9 @@
 
 class WmiEventListener {
 public:
-  WmiEventListener(IUnknown *eventSink);
+  explicit WmiEventListener(IUnknown *eventSink);
   ~WmiEventListener();
+  WmiEventListener(const WmiEventListener &) = delete;
 
   void Start();
   void Stop();

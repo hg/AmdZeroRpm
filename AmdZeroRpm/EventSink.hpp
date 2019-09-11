@@ -5,22 +5,23 @@
 #include "IStartupCallbackReceiver.hpp"
 #include <WbemIdl.h>
 #include <comdef.h>
-#include <functional>
 
-class EventSink : public IWbemObjectSink {
+class EventSink final : public IWbemObjectSink {
 public:
-  EventSink(IStartupCallbackReceiver &callback) : mCallback{callback} {}
+  explicit EventSink(IStartupCallbackReceiver &callback)
+      : mCallback{callback} {}
   virtual ~EventSink() { mDone = true; }
+  EventSink(const EventSink &) = delete;
 
-  virtual ULONG __stdcall AddRef();
-  virtual ULONG __stdcall Release();
-  virtual HRESULT __stdcall QueryInterface(REFIID riid, void **ppv);
+  ULONG __stdcall AddRef() override;
+  ULONG __stdcall Release() override;
+  HRESULT __stdcall QueryInterface(REFIID riid, void **ppv) override;
 
-  virtual HRESULT __stdcall Indicate(LONG objectCount,
-                                     IWbemClassObject **objects);
+  HRESULT __stdcall Indicate(LONG objectCount,
+                             IWbemClassObject **objects) override;
 
-  virtual HRESULT __stdcall SetStatus(LONG flags, HRESULT result, BSTR strParam,
-                                      IWbemClassObject *objParam);
+  HRESULT __stdcall SetStatus(LONG flags, HRESULT result, BSTR strParam,
+                              IWbemClassObject *objParam) override;
 
 private:
   IStartupCallbackReceiver &mCallback;

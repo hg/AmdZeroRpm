@@ -3,7 +3,7 @@
 
 namespace {
 
-void CheckResult(HRESULT result) {
+void CheckResult(const HRESULT result) {
   if (FAILED(result)) {
     std::stringstream ss;
     ss << "error establishing WMI connection: 0x" << std::hex << GetLastError();
@@ -14,7 +14,7 @@ void CheckResult(HRESULT result) {
 } // namespace
 
 WmiEventListener::WmiEventListener(IUnknown *eventSink) {
-  CheckResult(CoInitializeEx(0, COINIT_MULTITHREADED));
+  CheckResult(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 
   CheckResult(CoInitializeSecurity(
       nullptr, -1, nullptr, nullptr, RPC_C_AUTHN_LEVEL_DEFAULT,

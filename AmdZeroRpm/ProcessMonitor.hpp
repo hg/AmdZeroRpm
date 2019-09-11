@@ -1,6 +1,7 @@
+#pragma once
+
 #include "IStateChangeCallbackReceiver.hpp"
 #include <Windows.h>
-#include <functional>
 #include <mutex>
 #include <string>
 #include <vector>

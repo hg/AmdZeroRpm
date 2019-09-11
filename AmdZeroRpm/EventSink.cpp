@@ -5,7 +5,7 @@ ULONG __stdcall EventSink::AddRef() {
 }
 
 ULONG __stdcall EventSink::Release() {
-  auto ref = InterlockedDecrement(&mReferences);
+  const auto ref = InterlockedDecrement(&mReferences);
   if (ref == 0) {
     delete this;
   }
@@ -25,7 +25,8 @@ HRESULT __stdcall EventSink::Indicate(LONG objectCount,
                                       IWbemClassObject **objects) {
   VARIANT var;
   for (int i = 0; i < objectCount; ++i) {
-    HRESULT result = objects[i]->Get(L"ProcessID", 0, &var, nullptr, nullptr);
+    const HRESULT result =
+        objects[i]->Get(L"ProcessID", 0, &var, nullptr, nullptr);
     if (SUCCEEDED(result)) {
       mCallback.ApplicationStarted(var.ulVal);
     }

@@ -32,7 +32,7 @@ Application::Application() {
     monitor.AddMonitoredPath(path);
   }
   // This gets deleted later by the COM subsystem.
-  auto eventSink = new EventSink{*this};
+  const auto eventSink = new EventSink{*this};
   connection.reset(new WmiEventListener{eventSink});
 }
 
@@ -53,14 +53,14 @@ void Application::ApplicationStarted(DWORD pid) noexcept {
   monitor.AddProcess(pid);
 }
 
-void Application::ProcessStateChanged(MonitorState state) noexcept {
-  bool enabled = state == MonitorState::NoProcesses;
+void Application::ProcessStateChanged(const MonitorState state) noexcept {
+  const bool enabled = state == MonitorState::NoProcesses;
   gpuController.ToggleZeroRpm(enabled);
 }
 
 bool RegisterAutostart() noexcept {
   wchar_t pathBuf[MAX_PATH + 1];
-  if (!GetModuleFileNameW(0, pathBuf, MAX_PATH)) {
+  if (!GetModuleFileNameW(nullptr, pathBuf, MAX_PATH)) {
     return false;
   }
   HKEY key;

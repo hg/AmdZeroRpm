@@ -1,5 +1,4 @@
 #include "ProcessMonitor.hpp"
-#include <algorithm>
 #include <array>
 #include <psapi.h>
 
@@ -7,19 +6,19 @@ using MutexGuard = std::lock_guard<std::mutex>;
 
 namespace {
 
-std::wstring GetProcessExePath(DWORD pid) {
+std::wstring GetProcessExePath(const DWORD pid) {
   wchar_t buffer[MAX_PATH + 1];
 
-  HANDLE process =
+  const auto process =
       OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
   if (!process) {
     return std::wstring{};
   }
 
-  auto exePathValid = GetModuleFileNameExW(process, 0, buffer, MAX_PATH);
+  const auto valid = GetModuleFileNameExW(process, nullptr, buffer, MAX_PATH);
   CloseHandle(process);
 
-  return exePathValid ? buffer : std::wstring{};
+  return valid ? buffer : std::wstring{};
 }
 
 } // namespace
@@ -41,8 +40,8 @@ void ProcessMonitor::AddMonitoredPath(std::wstring &&path) noexcept {
   mMonitoredPaths.push_back(path);
 }
 
-bool ProcessMonitor::AddProcess(DWORD pid) noexcept {
-  auto path = GetProcessExePath(pid);
+bool ProcessMonitor::AddProcess(const DWORD pid) noexcept {
+  const auto path = GetProcessExePath(pid);
 
   if (!IsMonitoredPath(path)) {
     return false;
@@ -100,7 +99,7 @@ void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &onStateChanged) {
       {
         MutexGuard guard{mProcessesLock};
         while (!mProcessPids.empty() && handles.size() < kMaxHandles) {
-          DWORD pid = mProcessPids.back();
+          const DWORD pid = mProcessPids.back();
           mProcessPids.pop_back();
 
           HANDLE process = OpenProcess(SYNCHRONIZE, false, pid);
@@ -117,7 +116,7 @@ void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &onStateChanged) {
       newProcessesInQueue = false;
     }
 
-    auto count = static_cast<DWORD>(handles.size());
+    const auto count = static_cast<DWORD>(handles.size());
     DWORD index = WaitForMultipleObjects(count, &handles[0], false, INFINITE);
     if (index >= WAIT_OBJECT_0 + MAXIMUM_WAIT_OBJECTS) {
       throw std::runtime_error("unexpected WaitForMultipleObjects() result");
@@ -143,7 +142,8 @@ bool ProcessMonitor::IsMonitoredPath(const std::wstring &path) {
     return false;
   }
   for (const auto &monitoredPath : mMonitoredPaths) {
-    int comp = _wcsnicmp(monitoredPath.c_str(), path.c_str(), path.length());
+    const int comp =
+        _wcsnicmp(monitoredPath.c_str(), path.c_str(), path.length());
     if (comp == 0) {
       return true;
     }
