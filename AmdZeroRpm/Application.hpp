@@ -21,7 +21,7 @@ public:
   void ProcessStateChanged(MonitorState state) noexcept override;
 
 private:
-  GpuController gpuController;
-  ProcessMonitor monitor;
-  std::unique_ptr<WmiEventListener> connection;
+  GpuController mGpuController;
+  ProcessMonitor mMonitor;
+  std::unique_ptr<WmiEventListener> mConnection;
 };

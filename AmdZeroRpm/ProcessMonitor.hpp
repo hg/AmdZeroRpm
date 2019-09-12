@@ -24,5 +24,5 @@ private:
   HANDLE mNewProcessEvent;
 
   bool ScanRunning() noexcept;
-  bool IsMonitoredPath(const std::wstring &path);
+  bool IsMonitoredPath(const std::wstring &path) noexcept;
 };

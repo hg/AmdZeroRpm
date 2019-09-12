@@ -1,30 +1,32 @@
 #include "GpuController.hpp"
+#include "AdlFunctions.hpp"
 #include <stdexcept>
 
-GpuController::GpuController() {
-  if (ADL2_Main_Control_Create(AdlMemoryAllocator, 1, &mContext) != ADL_OK) {
+namespace {
+
+ADL_CONTEXT_HANDLE AdlCreateContext() {
+  ADL_CONTEXT_HANDLE context;
+  if (ADL2_Main_Control_Create(AdlMemoryAllocator, 1, &context) != ADL_OK) {
     throw std::runtime_error("could not initialize ADL");
+  };
+  return context;
+}
+
+void AdlDestroyContext(void *context) {
+  if (context) {
+    ADL2_Main_Control_Destroy(context);
   }
 }
 
-GpuController::~GpuController() {
-  if (mContext != nullptr) {
-    ADL2_Main_Control_Destroy(mContext);
-  }
-}
+} // namespace
 
-bool GpuController::ToggleZeroRpm(const bool enabled) const noexcept {
+GpuController::GpuController()
+    : mContext{AdlCreateContext(), AdlDestroyContext} {}
+
+std::optional<Adapter> GpuController::GetPrimaryAdapter() const noexcept {
   int index = 0;
-  if (ADL2_Adapter_Primary_Get(mContext, &index) != ADL_OK) {
-    return false;
+  if (ADL2_Adapter_Primary_Get(mContext.get(), &index) != ADL_OK) {
+    return std::nullopt;
   }
-  int support = 0, current = 0, def = 0;
-  const auto status =
-      ADL2_OverdriveN_ZeroRPMFan_Get(mContext, index, &support, &current, &def);
-  if (status != ADL_OK || !support) {
-    return false;
-  }
-  const auto newValue = static_cast<int>(enabled);
-  return current == newValue ||
-         ADL2_OverdriveN_ZeroRPMFan_Set(mContext, index, newValue) == ADL_OK;
+  return Adapter{mContext, index};
 }

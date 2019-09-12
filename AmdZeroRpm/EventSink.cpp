@@ -1,10 +1,10 @@
 #include "EventSink.hpp"
 
-ULONG __stdcall EventSink::AddRef() {
+ULONG __stdcall EventSink::AddRef() noexcept {
   return InterlockedIncrement(&mReferences);
 }
 
-ULONG __stdcall EventSink::Release() {
+ULONG __stdcall EventSink::Release() noexcept {
   const auto ref = InterlockedDecrement(&mReferences);
   if (ref == 0) {
     delete this;
@@ -12,7 +12,7 @@ ULONG __stdcall EventSink::Release() {
   return ref;
 }
 
-HRESULT __stdcall EventSink::QueryInterface(REFIID riid, void **ppv) {
+HRESULT __stdcall EventSink::QueryInterface(REFIID riid, void **ppv) noexcept {
   if (riid == IID_IUnknown || riid == IID_IWbemObjectSink) {
     *ppv = static_cast<IWbemObjectSink *>(this);
     AddRef();
@@ -22,7 +22,7 @@ HRESULT __stdcall EventSink::QueryInterface(REFIID riid, void **ppv) {
 }
 
 HRESULT __stdcall EventSink::Indicate(LONG objectCount,
-                                      IWbemClassObject **objects) {
+                                      IWbemClassObject **objects) noexcept {
   VARIANT var;
   for (int i = 0; i < objectCount; ++i) {
     const HRESULT result =
@@ -36,7 +36,7 @@ HRESULT __stdcall EventSink::Indicate(LONG objectCount,
 
 HRESULT __stdcall EventSink::SetStatus(LONG flags, HRESULT result,
                                        BSTR strParam,
-                                       IWbemClassObject *objParam) {
+                                       IWbemClassObject *objParam) noexcept {
   UNREFERENCED_PARAMETER(flags);
   UNREFERENCED_PARAMETER(result);
   UNREFERENCED_PARAMETER(strParam);

@@ -13,15 +13,15 @@ public:
   virtual ~EventSink() { mDone = true; }
   EventSink(const EventSink &) = delete;
 
-  ULONG __stdcall AddRef() override;
-  ULONG __stdcall Release() override;
-  HRESULT __stdcall QueryInterface(REFIID riid, void **ppv) override;
+  ULONG __stdcall AddRef() noexcept override;
+  ULONG __stdcall Release() noexcept override;
+  HRESULT __stdcall QueryInterface(REFIID riid, void **ppv) noexcept override;
 
   HRESULT __stdcall Indicate(LONG objectCount,
-                             IWbemClassObject **objects) override;
+                             IWbemClassObject **objects) noexcept override;
 
   HRESULT __stdcall SetStatus(LONG flags, HRESULT result, BSTR strParam,
-                              IWbemClassObject *objParam) override;
+                              IWbemClassObject *objParam) noexcept override;
 
 private:
   IStartupCallbackReceiver &mCallback;

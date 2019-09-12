@@ -7,7 +7,7 @@ using MutexGuard = std::lock_guard<std::mutex>;
 
 namespace {
 
-std::wstring GetProcessExePath(const DWORD pid) {
+std::wstring GetProcessExePath(const DWORD pid) noexcept {
   wchar_t buffer[MAX_PATH + 1];
 
   const auto process =
@@ -119,7 +119,7 @@ void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &eventHandler) {
   }
 }
 
-bool ProcessMonitor::IsMonitoredPath(const std::wstring &path) {
+bool ProcessMonitor::IsMonitoredPath(const std::wstring &path) noexcept {
   if (path.empty()) {
     return false;
   }

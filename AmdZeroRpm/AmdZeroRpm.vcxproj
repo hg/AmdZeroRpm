@@ -95,6 +95,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)\Includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,6 +131,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)\Includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Adapter.cpp" />
     <ClCompile Include="AdlFunctions.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="EventSink.cpp" />
@@ -150,6 +153,7 @@
     <ClCompile Include="WmiEventListener.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Adapter.hpp" />
     <ClInclude Include="AdlFunctions.hpp" />
     <ClInclude Include="Application.hpp" />
     <ClInclude Include="EventSink.hpp" />

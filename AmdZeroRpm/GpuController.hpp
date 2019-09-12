@@ -1,15 +1,15 @@
 #pragma once
 
-#include "AdlFunctions.hpp"
+#include "Adapter.hpp"
+#include <memory>
+#include <optional>
 
 class GpuController {
 public:
   GpuController();
-  ~GpuController();
-  GpuController(const GpuController &) = delete;
 
-  bool ToggleZeroRpm(bool enabled) const noexcept;
+  [[nodiscard]] std::optional<Adapter> GetPrimaryAdapter() const noexcept;
 
 private:
-  ADL_CONTEXT_HANDLE mContext{nullptr};
+  const AdlContext mContext;
 };

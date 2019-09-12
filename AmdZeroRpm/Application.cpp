@@ -29,26 +29,29 @@ std::vector<std::wstring> LoadMonitoredPaths() {
 
 Application::Application() {
   for (const auto &path : LoadMonitoredPaths()) {
-    monitor.AddMonitoredPath(path);
+    mMonitor.AddMonitoredPath(path);
   }
   // This gets deleted later by the COM subsystem.
   const auto eventSink = new EventSink{*this};
-  connection.reset(new WmiEventListener{eventSink});
+  mConnection.reset(new WmiEventListener{eventSink});
 }
 
 void Application::Start() {
-  connection->Start();
-  monitor.MonitorLoop(*this);
-  connection->Stop();
+  mConnection->Start();
+  mMonitor.MonitorLoop(*this);
+  mConnection->Stop();
 }
 
 void Application::ApplicationStarted(DWORD pid) noexcept {
-  monitor.AddProcess(pid);
+  mMonitor.AddProcess(pid);
 }
 
 void Application::ProcessStateChanged(const MonitorState state) noexcept {
   const bool enabled = state == MonitorState::NoProcesses;
-  gpuController.ToggleZeroRpm(enabled);
+  const std::optional<Adapter> adapter = mGpuController.GetPrimaryAdapter();
+  if (adapter.has_value()) {
+    adapter.value().SetZeroRpm(enabled);
+  }
 }
 
 bool RegisterAutostart() noexcept {
