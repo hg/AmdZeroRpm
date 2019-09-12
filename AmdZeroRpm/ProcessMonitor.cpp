@@ -108,14 +108,11 @@ void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &eventHandler) {
       std::for_each(handles.cbegin(), handles.cend(), CloseHandle);
       handles.clear();
     }
-    {
-      MutexGuard guard{mProcessesLock};
-      const auto count = std::min<size_t>(kMaxHandles, mNewProcessQueue.size());
-      std::copy_n(mNewProcessQueue.cbegin(), count,
-                  std::back_inserter(handles));
-      mNewProcessQueue.erase(mNewProcessQueue.cbegin(),
-                             mNewProcessQueue.cbegin() + count);
-    }
+    MutexGuard guard{mProcessesLock};
+    const auto count = std::min<size_t>(kMaxHandles, mNewProcessQueue.size());
+    std::copy_n(mNewProcessQueue.cbegin(), count, std::back_inserter(handles));
+    mNewProcessQueue.erase(mNewProcessQueue.cbegin(),
+                           mNewProcessQueue.cbegin() + count);
   }
 }
 
