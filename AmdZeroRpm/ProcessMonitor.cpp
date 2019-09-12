@@ -24,15 +24,6 @@ std::wstring GetProcessExePath(const DWORD pid) noexcept {
 
 } // namespace
 
-ProcessMonitor::ProcessMonitor() {
-  mNewProcessEvent = CreateEventW(nullptr, false, false, nullptr);
-  if (!mNewProcessEvent) {
-    throw std::runtime_error("could not create thread notification event");
-  }
-}
-
-ProcessMonitor::~ProcessMonitor() { CloseHandle(mNewProcessEvent); }
-
 void ProcessMonitor::AddMonitoredPath(const std::wstring &path) noexcept {
   mMonitoredPaths.push_back(path);
 }
@@ -49,12 +40,20 @@ bool ProcessMonitor::AddProcess(const DWORD pid) noexcept {
     if (process) {
       MutexGuard guard{mProcessesLock};
       mNewProcessQueue.push_back(process);
-      SetEvent(mNewProcessEvent);
+      mProcessCreated.notify_one();
       return true;
     }
   }
 
   return false;
+}
+
+void ProcessMonitor::DrainNewProcessQueue(
+    std::vector<HANDLE> &handles) noexcept {
+  const auto count = std::min<size_t>(kMaxProcesses, mNewProcessQueue.size());
+  std::copy_n(mNewProcessQueue.cbegin(), count, std::back_inserter(handles));
+  mNewProcessQueue.erase(mNewProcessQueue.cbegin(),
+                         mNewProcessQueue.cbegin() + count);
 }
 
 bool ProcessMonitor::ScanRunning() noexcept {
@@ -75,7 +74,7 @@ bool ProcessMonitor::ScanRunning() noexcept {
       }
     }
     if (!mNewProcessQueue.empty()) {
-      SetEvent(mNewProcessEvent);
+      mProcessCreated.notify_one();
     }
     return true;
   }
@@ -84,35 +83,30 @@ bool ProcessMonitor::ScanRunning() noexcept {
 }
 
 void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &eventHandler) {
-  constexpr auto kMaxHandles = MAXIMUM_WAIT_OBJECTS;
-
   std::vector<HANDLE> handles;
-  handles.reserve(kMaxHandles);
-
-  const auto checkWait = [](const DWORD code) {
-    if (code != WAIT_OBJECT_0) {
-      throw std::runtime_error("wait function failed");
-    }
-  };
+  handles.reserve(kMaxProcesses);
 
   ScanRunning();
 
   while (true) {
     if (handles.empty()) {
       eventHandler.ProcessStateChanged(MonitorState::NoProcesses);
-      checkWait(WaitForSingleObject(mNewProcessEvent, INFINITE));
+      std::unique_lock<std::mutex> lock{mProcessesLock};
+      mProcessCreated.wait(lock);
+      DrainNewProcessQueue(handles);
+      lock.unlock();
     } else {
       eventHandler.ProcessStateChanged(MonitorState::Active);
-      const auto count = static_cast<DWORD>(handles.size());
-      checkWait(WaitForMultipleObjects(count, &handles[0], true, INFINITE));
+      if (WaitForMultipleObjects(static_cast<DWORD>(handles.size()),
+                                 &handles[0], true,
+                                 INFINITE) != WAIT_OBJECT_0) {
+        throw std::runtime_error{"WaitForMultipleObjects() failed"};
+      }
       std::for_each(handles.cbegin(), handles.cend(), CloseHandle);
       handles.clear();
+      MutexGuard guard{mProcessesLock};
+      DrainNewProcessQueue(handles);
     }
-    MutexGuard guard{mProcessesLock};
-    const auto count = std::min<size_t>(kMaxHandles, mNewProcessQueue.size());
-    std::copy_n(mNewProcessQueue.cbegin(), count, std::back_inserter(handles));
-    mNewProcessQueue.erase(mNewProcessQueue.cbegin(),
-                           mNewProcessQueue.cbegin() + count);
   }
 }
 
