@@ -92,7 +92,7 @@ void ProcessMonitor::MonitorLoop(IStateChangeCallbackReceiver &eventHandler) {
     if (handles.empty()) {
       eventHandler.ProcessStateChanged(MonitorState::NoProcesses);
       std::unique_lock<std::mutex> lock{mProcessesLock};
-      mProcessCreated.wait(lock);
+      mProcessCreated.wait(lock, [this] { return !mNewProcessQueue.empty(); });
       DrainNewProcessQueue(handles);
       lock.unlock();
     } else {
